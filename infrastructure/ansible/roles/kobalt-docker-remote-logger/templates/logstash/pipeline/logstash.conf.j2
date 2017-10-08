@@ -1,0 +1,24 @@
+input {
+  syslog {
+    port => 5014
+    type => "docker"
+  }
+}
+
+filter {
+  grok {
+    match => { "message" => "%{SYSLOG5424BASE} +%{GREEDYDATA:syslog5424_msg}" }
+  }
+  mutate {
+    rename => { "syslog5424_app" => "containerName" }
+    rename => { "syslog5424_host" => "containerId" }
+    rename => { "syslog5424_msg" => "message"}
+    remove_field => ["syslog5424_proc", "syslog5424_ver", "syslog5424_pri", "syslog5424_ts"]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["{{ elasticsearch_host }}:{{ elasticsearch_port }}"]
+  }
+}

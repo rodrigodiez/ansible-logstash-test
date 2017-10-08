@@ -1,0 +1,53 @@
+---
+- name: create logstash pipeline directory
+  file:
+    path: "{{ host_base_path }}/logstash/pipeline"
+    state: directory
+    mode: 0755
+
+- name: create logstash service configuration directory
+  file:
+    path: "{{ host_base_path }}/logstash/etc"
+    state: directory
+    mode: 0755
+
+- name: upload logstash service configuration
+  template:
+    src: logstash/etc/logstash.yaml.j2
+    dest: "{{ host_base_path }}/logstash/etc"
+    mode: 0755
+  register: logstash_etc
+
+- name: upload logstash pipeline configuration
+  template:
+    src: logstash/pipeline/logstash.conf.j2
+    dest: "{{ host_base_path }}/logstash/pipeline"
+    mode: 0755
+  register: logstash_pipeline
+
+- name: start logstash
+  docker_container:
+    name: logstash
+    image: docker.elastic.co/logstash/logstash:5.6.2
+    state: started
+    pull: yes
+    restart: "{{ 'yes' if (logstash_etc.changed or logstash_pipeline.changed) else omit }}"
+    restart_policy: always
+    networks:
+      - name: "{{ docker_network_name }}"
+    volumes:
+      - "{{ host_base_path }}/logstash/pipeline:/usr/share/logstash/pipeline"
+      - "{{ host_base_path }}/logstash/etc/logstash.yaml:/etc/logstash/logstash.yml"
+
+- name: start logspout
+  docker_container:
+    name: logspout
+    image: gliderlabs/logspout
+    state: started
+    command: "syslog+tcp://logstash:5014"
+    pull: yes
+    restart_policy: always
+    networks:
+      - name: "{{ docker_network_name }}"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"

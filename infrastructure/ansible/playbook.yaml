@@ -1,0 +1,39 @@
+---
+- hosts: localhost
+  vars:
+    elasticsearch_host: elasticsearch
+    elasticsearch_port: 9200
+    host_base_path: /home/rodrigodiez/src/kobalt.bitbucket.com/ansible-logstash-test/deploy
+    docker_network_name: ansible-logstash-test
+  pre_tasks:
+  - name: create docker network
+    docker_network:
+      name: "{{ docker_network_name }}"
+  - name: start docker
+    service:
+      name: docker
+      state: started
+  - name: start elastic search
+    docker_container:
+      name: elasticsearch
+      image: docker.elastic.co/elasticsearch/elasticsearch:5.6.2
+      pull: yes
+      networks:
+        - name: "{{ docker_network_name }}"
+      env:
+        discovery.type: single-node
+        xpack.security.enabled: "false"
+  - name: start kibana
+    docker_container:
+      name: kibana
+      image: docker.elastic.co/kibana/kibana:5.6.2
+      pull: yes
+      networks:
+        - name: "{{ docker_network_name }}"
+      env:
+        ELASTICSEARCH_URL: http://{{ elasticsearch_host }}:{{ elasticsearch_port }}
+      ports:
+        - "5601:5601"
+
+  roles:
+    - kobalt-docker-remote-logger
