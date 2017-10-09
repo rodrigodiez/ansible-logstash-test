@@ -23,6 +23,30 @@
       env:
         discovery.type: single-node
         xpack.security.enabled: "false"
+
+  - name: create nginx site directory
+    file:
+      path: "{{ host_base_path }}/nginx/html"
+      state: directory
+      mode: 0755
+
+  - name: create nginx site
+    copy:
+      src: nginx/html/hello-world
+      dest: "{{ host_base_path }}/nginx/html"
+
+  - name: start nginx
+    docker_container:
+      name: nginx
+      image: nginx
+      pull: yes
+      networks:
+        - name: "{{ docker_network_name }}"
+      ports:
+        - "80:80"
+      volumes:
+        - "{{ host_base_path }}/nginx/html:/usr/share/nginx/html"
+
   - name: start kibana
     docker_container:
       name: kibana

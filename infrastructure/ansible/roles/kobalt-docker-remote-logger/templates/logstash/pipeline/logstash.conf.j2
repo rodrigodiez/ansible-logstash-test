@@ -6,14 +6,21 @@ input {
 }
 
 filter {
-  grok {
-    match => { "message" => "%{SYSLOG5424BASE} +%{GREEDYDATA:syslog5424_msg}" }
-  }
   mutate {
-    rename => { "syslog5424_app" => "containerName" }
-    rename => { "syslog5424_host" => "containerId" }
-    rename => { "syslog5424_msg" => "message"}
-    remove_field => ["syslog5424_proc", "syslog5424_ver", "syslog5424_pri", "syslog5424_ts"]
+    rename => { "program" => "containerName" }
+    rename => { "logsource" => "containerId" }
+    remove_field => ["timestamp8601"]
+  }
+
+  grok {
+    patterns_dir => ['/usr/share/logstash/patterns']
+    match => { "message" => "%{NGINXACCESS}" }
+    add_field => { "logType" => "access" }
+  }
+
+  grok {
+    patterns_dir => ['/usr/share/logstash/patterns']
+    match => { "message" => "%{NGINXERROR}" }
   }
 }
 

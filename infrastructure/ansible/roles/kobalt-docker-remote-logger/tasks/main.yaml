@@ -11,6 +11,12 @@
     state: directory
     mode: 0755
 
+- name: create logstash patterns directory
+  file:
+    path: "{{ host_base_path }}/logstash/patterns"
+    state: directory
+    mode: 0755
+
 - name: upload logstash service configuration
   template:
     src: logstash/etc/logstash.yaml.j2
@@ -25,19 +31,27 @@
     mode: 0755
   register: logstash_pipeline
 
+- name: upload logstash patterns
+  copy:
+    src: logstash/patterns/extra
+    dest: "{{ host_base_path }}/logstash/patterns"
+    mode: 0755
+  register: logstash_patterns
+
 - name: start logstash
   docker_container:
     name: logstash
     image: docker.elastic.co/logstash/logstash:5.6.2
     state: started
     pull: yes
-    restart: "{{ 'yes' if (logstash_etc.changed or logstash_pipeline.changed) else omit }}"
+    restart: "{{ 'yes' if (logstash_etc.changed or logstash_pipeline.changed or logstash_patterns.changed) else omit }}"
     restart_policy: always
     networks:
       - name: "{{ docker_network_name }}"
     volumes:
       - "{{ host_base_path }}/logstash/pipeline:/usr/share/logstash/pipeline"
       - "{{ host_base_path }}/logstash/etc/logstash.yaml:/etc/logstash/logstash.yml"
+      - "{{ host_base_path }}/logstash/patterns:/usr/share/logstash/patterns"
 
 - name: start logspout
   docker_container:
@@ -51,3 +65,5 @@
       - name: "{{ docker_network_name }}"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+    env:
+      SYSLOG_FORMAT: rfc3164
